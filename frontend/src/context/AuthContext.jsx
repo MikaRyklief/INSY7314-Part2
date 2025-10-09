@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import PropTypes from 'prop-types';
 import apiClient, { fetchCsrfToken } from '../api/client.js';
 import { validateLoginPayload, validateRegistrationPayload } from '../utils/validators.js';
 
@@ -98,6 +99,10 @@ export const AuthProvider = ({ children }) => {
       {children}
     </AuthContext.Provider>
   );
+};
+
+AuthProvider.propTypes = {
+  children: PropTypes.node.isRequired
 };
 
 export const useAuth = () => {
