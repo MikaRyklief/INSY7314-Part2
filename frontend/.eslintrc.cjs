@@ -25,6 +25,8 @@ module.exports = {
     }
   },
   rules: {
-    'react/react-in-jsx-scope': 'off'
+    'react/react-in-jsx-scope': 'off',
+    semi: ['error', 'always'],
+    'space-before-function-paren': 'off'
   }
 };

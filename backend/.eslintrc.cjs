@@ -11,6 +11,9 @@ module.exports = {
     sourceType: 'module'
   },
   rules: {
-    'no-console': 'warn'
+    'no-console': 'warn',
+    semi: ['error', 'always'],
+    'space-before-function-paren': 'off',
+    'n/handle-callback-err': 'off'
   }
 };
