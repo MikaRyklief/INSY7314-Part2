@@ -6,7 +6,8 @@ import {
   findEmployeeById,
   listPaymentsForReview,
   updatePaymentStatus,
-  findPaymentForReview
+  findPaymentForReview,
+  isValidDocumentId
 } from '../db/index.js';
 import { config } from '../config.js';
 import { validateBody } from '../middleware/validate.js';
@@ -117,8 +118,8 @@ router.post(
   requireEmployeeAuth,
   validateBody(validatePaymentReviewPayload),
   async (req, res) => {
-    const paymentId = Number(req.params.paymentId);
-    if (!Number.isInteger(paymentId) || paymentId <= 0) {
+    const paymentId = String(req.params.paymentId).trim();
+    if (!isValidDocumentId(paymentId)) {
       res.status(400).json({ status: 'error', message: 'Invalid payment reference.' });
       return;
     }

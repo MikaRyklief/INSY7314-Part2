@@ -1,102 +1,8 @@
-import fs from 'fs';
-import path from 'path';
-import sqlite3 from 'sqlite3';
+import { MongoClient, ObjectId, ServerApiVersion } from 'mongodb';
 import { config } from '../config.js';
 
-sqlite3.verbose();
-
-const dbDirectory = path.dirname(config.dbPath);
-if (!fs.existsSync(dbDirectory)) {
-  fs.mkdirSync(dbDirectory, { recursive: true });
-}
-
-export const db = new sqlite3.Database(config.dbPath, (err) => {
-  if (err) {
-    // Fail fast if database cannot initialize
-    throw err;
-  }
-});
-
-export const initializeDatabase = () => {
-  db.serialize(() => {
-    db.run('PRAGMA journal_mode = WAL;');
-    db.run(`
-      CREATE TABLE IF NOT EXISTS customers (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        full_name TEXT NOT NULL,
-        id_number TEXT NOT NULL UNIQUE,
-        account_number TEXT NOT NULL UNIQUE,
-        password_hash TEXT NOT NULL,
-        created_at TEXT NOT NULL DEFAULT (datetime('now'))
-      );
-    `);
-
-    db.run(`
-      CREATE TABLE IF NOT EXISTS payments (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        customer_id INTEGER NOT NULL,
-        amount REAL NOT NULL,
-        currency TEXT NOT NULL,
-        provider TEXT NOT NULL,
-        beneficiary_account TEXT NOT NULL,
-        swift_code TEXT NOT NULL,
-        status TEXT NOT NULL DEFAULT 'pending',
-        created_at TEXT NOT NULL DEFAULT (datetime('now')),
-        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-        FOREIGN KEY (customer_id) REFERENCES customers (id)
-      );
-    `);
-  });
-
-  ensureEmployeesTable((err) => {
-    if (err) {
-      throw err;
-    }
-    seedEmployees();
-  });
-};
-
-const ensureEmployeesTable = (callback) => {
-  db.all('PRAGMA table_info(employees);', (err, columns) => {
-    if (err) {
-      callback(err);
-      return;
-    }
-
-    const expectedColumns = new Set(['id', 'full_name', 'employee_id', 'password_hash', 'created_at']);
-    const columnNames = columns.map((column) => column.name);
-    const hasExpectedSchema = columns.length > 0 && [...expectedColumns].every((col) => columnNames.includes(col));
-
-    if (hasExpectedSchema) {
-      callback(null);
-      return;
-    }
-
-    db.serialize(() => {
-      db.run('DROP TABLE IF EXISTS employees;', (dropErr) => {
-        if (dropErr) {
-          callback(dropErr);
-          return;
-        }
-        db.run(`
-          CREATE TABLE employees (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            full_name TEXT NOT NULL,
-            employee_id TEXT NOT NULL UNIQUE,
-            password_hash TEXT NOT NULL,
-            created_at TEXT NOT NULL DEFAULT (datetime('now'))
-          );
-        `, (createErr) => {
-          if (createErr) {
-            callback(createErr);
-            return;
-          }
-          callback(null);
-        });
-      });
-    });
-  });
-};
+let client;
+let database;
 
 const DEFAULT_EMPLOYEES = [
   {
@@ -106,227 +12,384 @@ const DEFAULT_EMPLOYEES = [
   }
 ];
 
-const seedEmployees = () => {
-  const stmt = db.prepare(`
-    INSERT OR IGNORE INTO employees (full_name, employee_id, password_hash)
-    VALUES (?, ?, ?);
-  `);
-
-  DEFAULT_EMPLOYEES.forEach((employee) => {
-    stmt.run([employee.fullName, employee.employeeId, employee.passwordHash]);
-  });
-  stmt.finalize();
+const getDb = () => {
+  if (!database) {
+    throw new Error('Database not initialized. Call initializeDatabase() first.');
+  }
+  return database;
 };
 
-export const createCustomer = ({ fullName, idNumber, accountNumber, passwordHash }) => new Promise((resolve, reject) => {
-  const stmt = db.prepare(`
-    INSERT INTO customers (full_name, id_number, account_number, password_hash)
-    VALUES (?, ?, ?, ?);
-  `);
+const getCollection = (name) => getDb().collection(name);
 
-  stmt.run([fullName, idNumber, accountNumber, passwordHash], function runCallback(err) {
-    stmt.finalize();
-    if (err) {
-      reject(err);
-      return;
+const toObjectId = (value) => {
+  if (!value) {
+    return null;
+  }
+
+  if (value instanceof ObjectId) {
+    return value;
+  }
+
+  if (ObjectId.isValid(value)) {
+    return new ObjectId(value);
+  }
+
+  return null;
+};
+
+export const isValidDocumentId = (value) => ObjectId.isValid(value);
+
+const mapCustomer = (doc) => {
+  if (!doc) {
+    return null;
+  }
+
+  return {
+    id: doc._id.toString(),
+    fullName: doc.fullName,
+    idNumber: doc.idNumber,
+    accountNumber: doc.accountNumber,
+    createdAt: doc.createdAt
+  };
+};
+
+const mapPayment = (doc) => {
+  if (!doc) {
+    return null;
+  }
+
+  return {
+    id: doc._id.toString(),
+    customerId: doc.customerId?.toString(),
+    amount: doc.amount,
+    currency: doc.currency,
+    provider: doc.provider,
+    beneficiaryAccount: doc.beneficiaryAccount,
+    swiftCode: doc.swiftCode,
+    status: doc.status,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt
+  };
+};
+
+const mapPaymentWithCustomer = (paymentDoc, customerDoc) => {
+  const payment = mapPayment(paymentDoc);
+  if (!payment) {
+    return null;
+  }
+
+  return {
+    ...payment,
+    customerName: customerDoc?.fullName || 'Unknown customer',
+    customerAccountNumber: customerDoc?.accountNumber || 'Unknown account'
+  };
+};
+
+const seedEmployees = async (employeesCollection) => {
+  if (!DEFAULT_EMPLOYEES.length) {
+    return;
+  }
+
+  const operations = DEFAULT_EMPLOYEES.map((employee) => ({
+    updateOne: {
+      filter: { employeeId: employee.employeeId },
+      update: {
+        $setOnInsert: {
+          fullName: employee.fullName,
+          employeeId: employee.employeeId,
+          searchEmployeeId: employee.employeeId.toUpperCase(),
+          passwordHash: employee.passwordHash,
+          createdAt: new Date()
+        }
+      },
+      upsert: true
     }
-    resolve({ id: this.lastID });
-  });
-});
+  }));
 
-export const findCustomerByCredentials = ({ idNumber, accountNumber }) => new Promise((resolve, reject) => {
-  db.get(`
-    SELECT id, full_name AS fullName, id_number AS idNumber, account_number AS accountNumber, password_hash AS passwordHash
-    FROM customers
-    WHERE id_number = ? AND account_number = ?
-  `, [idNumber, accountNumber], (err, row) => {
-    if (err) {
-      reject(err);
-      return;
+  await employeesCollection.bulkWrite(operations, { ordered: false });
+};
+
+const ensureIndexesAndSeed = async () => {
+  const customers = getCollection('customers');
+  const payments = getCollection('payments');
+  const employees = getCollection('employees');
+
+  await Promise.all([
+    customers.createIndex({ idNumber: 1 }, { unique: true, name: 'unique_id_number' }),
+    customers.createIndex({ accountNumber: 1 }, { unique: true, name: 'unique_account_number' }),
+    payments.createIndex({ customerId: 1, createdAt: -1 }, { name: 'customer_created_at' }),
+    payments.createIndex({ status: 1 }, { name: 'payment_status' }),
+    employees.createIndex({ employeeId: 1 }, { unique: true, name: 'unique_employee_id' }),
+    employees.createIndex({ searchEmployeeId: 1 }, { unique: true, name: 'unique_employee_id_lookup' })
+  ]);
+
+  await seedEmployees(employees);
+};
+
+export const initializeDatabase = async () => {
+  if (database) {
+    return database;
+  }
+
+  if (!config.mongo?.uri) {
+    throw new Error('Missing MongoDB connection string (MONGO_URI).');
+  }
+
+  if (!config.mongo?.dbName) {
+    throw new Error('Missing MongoDB database name (MONGO_DB_NAME).');
+  }
+
+  client = new MongoClient(config.mongo.uri, {
+    serverApi: {
+      version: ServerApiVersion.v1,
+      strict: true,
+      deprecationErrors: true
     }
-    resolve(row || null);
   });
-});
 
-export const findCustomerById = (customerId) => new Promise((resolve, reject) => {
-  db.get(`
-    SELECT id, full_name AS fullName, id_number AS idNumber, account_number AS accountNumber
-    FROM customers
-    WHERE id = ?
-  `, [customerId], (err, row) => {
-    if (err) {
-      reject(err);
-      return;
+  await client.connect();
+  database = client.db(config.mongo.dbName);
+  await ensureIndexesAndSeed();
+  return database;
+};
+
+export const createCustomer = async ({ fullName, idNumber, accountNumber, passwordHash }) => {
+  const customers = getCollection('customers');
+  const now = new Date();
+
+  try {
+    const result = await customers.insertOne({
+      fullName,
+      idNumber,
+      accountNumber,
+      passwordHash,
+      createdAt: now
+    });
+
+    return { id: result.insertedId.toString() };
+  } catch (err) {
+    if (err?.code === 11000) {
+      const error = new Error('Customer already exists.');
+      error.code = 'DUPLICATE_CUSTOMER';
+      throw error;
     }
-    resolve(row || null);
-  });
-});
+    throw err;
+  }
+};
 
-export const createPayment = ({ customerId, amount, currency, provider, beneficiaryAccount, swiftCode }) => new Promise((resolve, reject) => {
-  const stmt = db.prepare(`
-    INSERT INTO payments (customer_id, amount, currency, provider, beneficiary_account, swift_code)
-    VALUES (?, ?, ?, ?, ?, ?);
-  `);
-
-  stmt.run([customerId, amount, currency, provider, beneficiaryAccount, swiftCode], function runCallback(err) {
-    stmt.finalize();
-    if (err) {
-      reject(err);
-      return;
+export const findCustomerByCredentials = async ({ idNumber, accountNumber }) => {
+  const customers = getCollection('customers');
+  const doc = await customers.findOne(
+    { idNumber, accountNumber },
+    {
+      projection: {
+        fullName: 1,
+        idNumber: 1,
+        accountNumber: 1,
+        passwordHash: 1,
+        createdAt: 1
+      }
     }
-    resolve({ id: this.lastID });
-  });
-});
+  );
 
-export const listPaymentsForCustomer = (customerId) => new Promise((resolve, reject) => {
-  db.all(`
-    SELECT
-      id,
-      amount,
-      currency,
-      provider,
-      beneficiary_account AS beneficiaryAccount,
-      swift_code AS swiftCode,
-      status,
-      created_at AS createdAt,
-      updated_at AS updatedAt
-    FROM payments
-    WHERE customer_id = ?
-    ORDER BY created_at DESC;
-  `, [customerId], (err, rows) => {
-    if (err) {
-      reject(err);
-      return;
+  if (!doc) {
+    return null;
+  }
+
+  return {
+    id: doc._id.toString(),
+    fullName: doc.fullName,
+    idNumber: doc.idNumber,
+    accountNumber: doc.accountNumber,
+    passwordHash: doc.passwordHash,
+    createdAt: doc.createdAt
+  };
+};
+
+export const findCustomerById = async (customerId) => {
+  const customers = getCollection('customers');
+  const objectId = toObjectId(customerId);
+  if (!objectId) {
+    return null;
+  }
+
+  const doc = await customers.findOne(
+    { _id: objectId },
+    { projection: { fullName: 1, idNumber: 1, accountNumber: 1, createdAt: 1 } }
+  );
+
+  return mapCustomer(doc);
+};
+
+export const listPaymentsForCustomer = async (customerId) => {
+  const payments = getCollection('payments');
+  const objectId = toObjectId(customerId);
+  if (!objectId) {
+    return [];
+  }
+
+  const docs = await payments
+    .find({ customerId: objectId })
+    .sort({ createdAt: -1 })
+    .toArray();
+
+  return docs.map(mapPayment);
+};
+
+export const createPayment = async ({
+  customerId,
+  amount,
+  currency,
+  provider,
+  beneficiaryAccount,
+  swiftCode
+}) => {
+  const payments = getCollection('payments');
+  const customerObjectId = toObjectId(customerId);
+  if (!customerObjectId) {
+    const error = new Error('Invalid customer identifier.');
+    error.code = 'INVALID_CUSTOMER_ID';
+    throw error;
+  }
+
+  const now = new Date();
+  const result = await payments.insertOne({
+    customerId: customerObjectId,
+    amount,
+    currency,
+    provider,
+    beneficiaryAccount,
+    swiftCode,
+    status: 'pending',
+    createdAt: now,
+    updatedAt: now
+  });
+
+  return { id: result.insertedId.toString() };
+};
+
+export const findPaymentById = async (paymentId) => {
+  const payments = getCollection('payments');
+  const objectId = toObjectId(paymentId);
+  if (!objectId) {
+    return null;
+  }
+
+  const doc = await payments.findOne({ _id: objectId });
+  return mapPayment(doc);
+};
+
+const buildPaymentReviewPipeline = (matchStage) => [
+  { $match: matchStage },
+  {
+    $lookup: {
+      from: 'customers',
+      localField: 'customerId',
+      foreignField: '_id',
+      as: 'customer'
     }
-    resolve(rows || []);
-  });
-});
-
-export const findPaymentById = (paymentId) => new Promise((resolve, reject) => {
-  db.get(`
-    SELECT
-      id,
-      customer_id AS customerId,
-      amount,
-      currency,
-      provider,
-      beneficiary_account AS beneficiaryAccount,
-      swift_code AS swiftCode,
-      status,
-      created_at AS createdAt,
-      updated_at AS updatedAt
-    FROM payments
-    WHERE id = ?;
-  `, [paymentId], (err, row) => {
-    if (err) {
-      reject(err);
-      return;
+  },
+  {
+    $unwind: {
+      path: '$customer',
+      preserveNullAndEmptyArrays: true
     }
-    resolve(row || null);
-  });
-});
+  },
+  { $sort: { createdAt: -1 } }
+];
 
-export const findEmployeeByCredentials = ({ employeeId }) => new Promise((resolve, reject) => {
-  db.get(`
-    SELECT
-      id,
-      full_name AS fullName,
-      employee_id AS employeeId,
-      password_hash AS passwordHash
-    FROM employees
-    WHERE UPPER(employee_id) = UPPER(?)
-  `, [employeeId], (err, row) => {
-    if (err) {
-      reject(err);
-      return;
-    }
-    resolve(row || null);
-  });
-});
+export const listPaymentsForReview = async () => {
+  const payments = getCollection('payments');
+  const docs = await payments.aggregate(buildPaymentReviewPipeline({})).toArray();
+  return docs.map((doc) => mapPaymentWithCustomer(doc, doc.customer));
+};
 
-export const findEmployeeById = (employeeId) => new Promise((resolve, reject) => {
-  db.get(`
-    SELECT
-      id,
-      full_name AS fullName,
-      employee_id AS employeeId
-    FROM employees
-    WHERE id = ?
-  `, [employeeId], (err, row) => {
-    if (err) {
-      reject(err);
-      return;
-    }
-    resolve(row || null);
-  });
-});
+export const findPaymentForReview = async (paymentId) => {
+  const payments = getCollection('payments');
+  const objectId = toObjectId(paymentId);
+  if (!objectId) {
+    return null;
+  }
 
-export const listPaymentsForReview = () => new Promise((resolve, reject) => {
-  db.all(`
-    SELECT
-      p.id,
-      p.amount,
-      p.currency,
-      p.provider,
-      p.beneficiary_account AS beneficiaryAccount,
-      p.swift_code AS swiftCode,
-      p.status,
-      p.created_at AS createdAt,
-      p.updated_at AS updatedAt,
-      c.full_name AS customerName,
-      c.account_number AS customerAccountNumber
-    FROM payments p
-    INNER JOIN customers c ON c.id = p.customer_id
-    ORDER BY p.created_at DESC;
-  `, [], (err, rows) => {
-    if (err) {
-      reject(err);
-      return;
-    }
-    resolve(rows || []);
-  });
-});
+  const pipeline = [
+    ...buildPaymentReviewPipeline({ _id: objectId }),
+    { $limit: 1 }
+  ];
+  const docs = await payments.aggregate(pipeline).toArray();
 
-export const findPaymentForReview = (paymentId) => new Promise((resolve, reject) => {
-  db.get(`
-    SELECT
-      p.id,
-      p.customer_id AS customerId,
-      p.amount,
-      p.currency,
-      p.provider,
-      p.beneficiary_account AS beneficiaryAccount,
-      p.swift_code AS swiftCode,
-      p.status,
-      p.created_at AS createdAt,
-      p.updated_at AS updatedAt,
-      c.full_name AS customerName,
-      c.account_number AS customerAccountNumber
-    FROM payments p
-    INNER JOIN customers c ON c.id = p.customer_id
-    WHERE p.id = ?;
-  `, [paymentId], (err, row) => {
-    if (err) {
-      reject(err);
-      return;
-    }
-    resolve(row || null);
-  });
-});
+  if (!docs.length) {
+    return null;
+  }
 
-export const updatePaymentStatus = ({ paymentId, status }) => new Promise((resolve, reject) => {
-  const stmt = db.prepare(`
-    UPDATE payments
-    SET status = ?, updated_at = datetime('now')
-    WHERE id = ?;
-  `);
+  const doc = docs[0];
+  return mapPaymentWithCustomer(doc, doc.customer);
+};
 
-  stmt.run([status, paymentId], function runCallback(err) {
-    stmt.finalize();
-    if (err) {
-      reject(err);
-      return;
-    }
-    resolve({ changes: this.changes });
-  });
-});
+export const findEmployeeByCredentials = async ({ employeeId }) => {
+  const employees = getCollection('employees');
+  const normalizedId = employeeId.trim().toUpperCase();
+
+  const doc = await employees.findOne(
+    { searchEmployeeId: normalizedId },
+    { projection: { fullName: 1, employeeId: 1, passwordHash: 1 } }
+  );
+
+  if (!doc) {
+    return null;
+  }
+
+  return {
+    id: doc._id.toString(),
+    fullName: doc.fullName,
+    employeeId: doc.employeeId,
+    passwordHash: doc.passwordHash
+  };
+};
+
+export const findEmployeeById = async (employeeId) => {
+  const employees = getCollection('employees');
+  const objectId = toObjectId(employeeId);
+  if (!objectId) {
+    return null;
+  }
+
+  const doc = await employees.findOne(
+    { _id: objectId },
+    { projection: { fullName: 1, employeeId: 1 } }
+  );
+
+  if (!doc) {
+    return null;
+  }
+
+  return {
+    id: doc._id.toString(),
+    fullName: doc.fullName,
+    employeeId: doc.employeeId
+  };
+};
+
+export const updatePaymentStatus = async ({ paymentId, status }) => {
+  const payments = getCollection('payments');
+  const objectId = toObjectId(paymentId);
+  if (!objectId) {
+    return { modifiedCount: 0 };
+  }
+
+  const result = await payments.updateOne(
+    { _id: objectId },
+    { $set: { status, updatedAt: new Date() } }
+  );
+
+  return { modifiedCount: result.modifiedCount };
+};
+
+export const closeDatabase = async () => {
+  if (!client) {
+    return;
+  }
+
+  await client.close();
+  client = null;
+  database = null;
+};

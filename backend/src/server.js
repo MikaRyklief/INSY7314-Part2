@@ -4,10 +4,6 @@ import { createApp } from './app.js';
 import { config } from './config.js';
 import { initializeDatabase } from './db/index.js';
 
-initializeDatabase();
-
-const app = createApp();
-
 const readFileIfExists = (filePath) => {
   if (!filePath) {
     return undefined;
@@ -18,24 +14,38 @@ const readFileIfExists = (filePath) => {
   return fs.readFileSync(filePath);
 };
 
-const sslOptions = {
-  key: readFileIfExists(config.ssl.keyPath),
-  cert: readFileIfExists(config.ssl.certPath),
-  ca: config.ssl.caPath ? readFileIfExists(config.ssl.caPath) : undefined,
-  minVersion: 'TLSv1.2',
-  requestCert: false,
-  rejectUnauthorized: true
+const startServer = async () => {
+  try {
+    await initializeDatabase();
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('Unable to initialize database connection:', err);
+    process.exit(1);
+  }
+
+  const app = createApp();
+
+  const sslOptions = {
+    key: readFileIfExists(config.ssl.keyPath),
+    cert: readFileIfExists(config.ssl.certPath),
+    ca: config.ssl.caPath ? readFileIfExists(config.ssl.caPath) : undefined,
+    minVersion: 'TLSv1.2',
+    requestCert: false,
+    rejectUnauthorized: true
+  };
+
+  const server = https.createServer(sslOptions, app);
+
+  server.listen(config.port, config.host, () => {
+    // eslint-disable-next-line no-console
+    console.log(`Secure API listening on https://${config.host}:${config.port}`);
+  });
+
+  server.on('error', (err) => {
+    // eslint-disable-next-line no-console
+    console.error('Unable to start HTTPS server:', err);
+    process.exit(1);
+  });
 };
 
-const server = https.createServer(sslOptions, app);
-
-server.listen(config.port, config.host, () => {
-  // eslint-disable-next-line no-console
-  console.log(`Secure API listening on https://${config.host}:${config.port}`);
-});
-
-server.on('error', (err) => {
-  // eslint-disable-next-line no-console
-  console.error('Unable to start HTTPS server:', err);
-  process.exit(1);
-});
+startServer();

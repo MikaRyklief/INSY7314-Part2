@@ -57,7 +57,7 @@ router.post(
         }
       });
     } catch (err) {
-      if (err?.message?.includes('SQLITE_CONSTRAINT')) {
+      if (err?.code === 'DUPLICATE_CUSTOMER') {
         res.status(409).json({
           status: 'error',
           message: 'A customer with that ID number or account already exists.'

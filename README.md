@@ -11,9 +11,9 @@ This project delivers a secure international payments experience for both custom
 
 ## Architecture Overview
 
-- **Backend (`backend/`)** - Express API served exclusively over HTTPS, backed by SQLite (`backend/data/payments.db`) with parameterised queries, CSRF middleware, and layered security hardening.
+- **Backend (`backend/`)** - Express API served exclusively over HTTPS, persisted in MongoDB (Atlas or any compatible cluster) via the official driver, with CSRF middleware and layered security hardening.
 - **Frontend (`frontend/`)** - React SPA (Vite) that communicates with the API using Axios, HTTP-only session cookies, and CSRF tokens. Includes both customer and employee interfaces.
-- **Database** – SQLite database (backend/data/payments.db) created automatically with hardened schema and parameterised statements.
+- **Database** – MongoDB cluster with enforced unique indexes for customers, employees, and payments plus seed data for initial employee access.
 - **Certificates** - Provide PEM encoded key/cert pairs in `backend/certs/server.key` and `backend/certs/server.crt`. Use self-signed certificates for local development or a trusted CA in higher environments.
 
 ## Security Controls
@@ -27,7 +27,7 @@ This project delivers a secure international payments experience for both custom
   - CSRF protection via `csurf` (double-submit cookie) and Axios interceptors.
   - XSS mitigation (`xss-clean`), HTTP parameter pollution protection (`hpp`), and JSON body size limits.
   - Rate limiting, secure session cookies, and strict SameSite policies.
-  - Parameterised SQL statements to prevent injection.
+  - Controlled MongoDB queries with strict filter objects and unique indexes to prevent injection.
 
 ## Getting Started
 
@@ -55,7 +55,7 @@ This project delivers a secure international payments experience for both custom
    Copy the same `server.key` and `server.crt` to the frontend (or point Vite to them) so both apps operate over HTTPS.
 
 3. **Configure environment variables**
-   - `backend/.env`: provide a strong `JWT_SECRET`, adjust `PORT`, `ALLOWED_ORIGINS`, and database paths if required.
+   - `backend/.env`: provide a strong `JWT_SECRET`, adjust `PORT`/`ALLOWED_ORIGINS`, and set `MONGO_URI` plus `MONGO_DB_NAME` to point at your MongoDB Atlas cluster (or self-hosted replica set). Allow your local IP in the Atlas network access list.
    - `frontend/.env`: set `VITE_API_BASE_URL` to the backend HTTPS origin (for example `https://localhost:8445`).
    - Restart the API if you change the port to avoid conflicts.
 
@@ -112,5 +112,5 @@ npm run build
 
 - Protect the API behind a WAF or API gateway with additional DDoS safeguards.
 - Store secrets in a vault service (Azure Key Vault, AWS Secrets Manager, HashiCorp Vault) instead of `.env` files.
-- Enable database encryption at rest and schedule secure backups of `payments.db`.
+- Enable MongoDB encryption at rest, restrict network ingress to trusted CIDRs, and schedule secure point-in-time backups of the cluster.
 - Monitor logs for repeated authentication failures and integrate alerts with your SIEM.
