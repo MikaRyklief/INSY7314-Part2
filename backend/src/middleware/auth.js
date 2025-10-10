@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { config } from '../config.js';
 
+// Validate JWTs stored in HTTP-only cookies so session data never touches client-side JS
 const verifyTokenFromCookie = (req, res, cookieName) => {
   const token = req.cookies?.[cookieName];
   if (!token) {

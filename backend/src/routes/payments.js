@@ -25,6 +25,7 @@ router.post(
   validateBody(validatePaymentPayload),
   async (req, res) => {
     try {
+      // Normalize and whitelist form input before handing off to the data layer
       const payload = {
         customerId: req.user.id,
         amount: Number(req.body.amount),

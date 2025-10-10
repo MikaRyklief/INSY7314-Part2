@@ -7,13 +7,13 @@ This project delivers a secure international payments experience for both custom
 - **Customer portal** - Registration, login, and payment capture with status tracking (pending, verified, rejected).
 - **Employee workspace** - Dedicated staff login, payment queue with filters, verification/rejection actions, and SWIFT submission summary.
 - **Security-first foundation** - Bcrypt password hashing, strict input whitelisting, CSRF protection, secure cookies, and opinionated security headers.
-- **Automated governance** - GitHub Actions workflow (`.github/workflows/ci.yml`) linting, building, and auditing every change.
+- **Automated governance** - CircleCI workflow (`.circleci/config.yml`) that enforces linting, builds, and security scans on every push.
 
 ## Architecture Overview
 
 - **Backend (`backend/`)** - Express API served exclusively over HTTPS, persisted in MongoDB (Atlas or any compatible cluster) via the official driver, with CSRF middleware and layered security hardening.
 - **Frontend (`frontend/`)** - React SPA (Vite) that communicates with the API using Axios, HTTP-only session cookies, and CSRF tokens. Includes both customer and employee interfaces.
-- **Database** – MongoDB cluster with enforced unique indexes for customers, employees, and payments plus seed data for initial employee access.
+- **Database** - MongoDB cluster with enforced unique indexes for customers, employees, and payments plus seed data for initial employee access.
 - **Certificates** - Provide PEM encoded key/cert pairs in `backend/certs/server.key` and `backend/certs/server.crt`. Use self-signed certificates for local development or a trusted CA in higher environments.
 
 ## Security Controls
@@ -28,6 +28,15 @@ This project delivers a secure international payments experience for both custom
   - XSS mitigation (`xss-clean`), HTTP parameter pollution protection (`hpp`), and JSON body size limits.
   - Rate limiting, secure session cookies, and strict SameSite policies.
   - Controlled MongoDB queries with strict filter objects and unique indexes to prevent injection.
+
+### Threat coverage
+
+- **Session jacking** – JWTs are issued in HTTP-only, `SameSite=strict` cookies with bcrypt-hashed credentials and short lifetimes.
+- **Clickjacking** – Helmet’s CSP denies all frames (`frame-ancestors 'none'`) and the app hides the `X-Powered-By` hint.
+- **Injection attacks** – Validators sanitize inputs, Mongo queries whitelist fields, and unique indexes plus ObjectId casting block crafted payloads.
+- **Cross-site scripting** – Strict CSP, `xss-clean`, payload validation, and template escaping prevent script injection.
+- **Man-in-the-middle** – The API only serves over HTTPS with TLSv1.2+, and the frontend calls the same secure origin.
+- **DDoS** – `express-rate-limit` throttles bursts, body payloads are capped at 10kb, and additional WAF guidance is included below.
 
 ## Getting Started
 
@@ -77,17 +86,21 @@ This project delivers a secure international payments experience for both custom
      - Employee ID: `OPS001`
      - Password: `OpsPortal!2024`
 
-## DevSecOps Pipeline and Automation
+## CI/CD & Automation (CircleCI)
 
-The repository ships with the `secure-ci` GitHub Actions workflow that runs on every push, pull request, or manual trigger:
+The CircleCI pipeline (`.circleci/config.yml`) runs on every push:
 
-1. Installs dependencies for `backend` and `frontend`.
-2. Runs ESLint on both projects.
-3. Builds the React app.
-4. Executes `npm run security-scan` (`npm audit --audit-level=high`) for the API.
-5. Performs a dedicated dependency audit job to block high severity issues from promotion.
+1. Installs backend dependencies with `npm ci`, lints the API, and executes `npm run security-scan` (`npm audit --audit-level=high`).
+2. Installs frontend dependencies, runs ESLint, and builds the React application.
 
-To mirror the pipeline locally after pulling fresh code:
+### First-time setup
+
+1. Push your changes to the remote repository.
+2. Sign in at [CircleCI](https://app.circleci.com), select this project, and click **Set Up Project** (no starter config required).
+3. Confirm the default branch; CircleCI will pull the repo and run the `build_and_secure` workflow automatically.
+
+### Local verification
+
 ```bash
 # Backend
 cd backend

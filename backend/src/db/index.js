@@ -21,6 +21,7 @@ const getDb = () => {
 
 const getCollection = (name) => getDb().collection(name);
 
+// Convert inbound identifiers into safe ObjectIds to prevent injection via crafted strings
 const toObjectId = (value) => {
   if (!value) {
     return null;
