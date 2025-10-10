@@ -1,5 +1,12 @@
 import PropTypes from 'prop-types';
 
+const formatStatus = (status) => {
+  if (!status) {
+    return 'Unknown';
+  }
+  return status.charAt(0).toUpperCase() + status.slice(1);
+};
+
 const PaymentList = ({ payments }) => {
   if (!payments.length) {
     return (
@@ -36,7 +43,11 @@ const PaymentList = ({ payments }) => {
                 <td>{payment.provider}</td>
                 <td>{payment.beneficiaryAccount}</td>
                 <td>{payment.swiftCode}</td>
-                <td>{payment.status}</td>
+                <td>
+                  <span className={`status-badge status-${payment.status}`}>
+                    {formatStatus(payment.status)}
+                  </span>
+                </td>
                 <td>{new Date(payment.createdAt).toLocaleString()}</td>
               </tr>
             ))}

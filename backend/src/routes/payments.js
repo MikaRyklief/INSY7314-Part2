@@ -1,5 +1,5 @@
 import express from 'express';
-import { requireAuth } from '../middleware/auth.js';
+import { requireCustomerAuth } from '../middleware/auth.js';
 import { validateBody } from '../middleware/validate.js';
 import { validatePaymentPayload, PROVIDERS } from '../utils/validators.js';
 import { createPayment, listPaymentsForCustomer, findPaymentById } from '../db/index.js';
@@ -8,7 +8,7 @@ const router = express.Router();
 
 router.get(
   '/',
-  requireAuth,
+  requireCustomerAuth,
   async (req, res) => {
     try {
       const payments = await listPaymentsForCustomer(req.user.id);
@@ -21,7 +21,7 @@ router.get(
 
 router.post(
   '/',
-  requireAuth,
+  requireCustomerAuth,
   validateBody(validatePaymentPayload),
   async (req, res) => {
     try {
@@ -49,7 +49,7 @@ router.post(
   }
 );
 
-router.get('/providers', requireAuth, (req, res) => {
+router.get('/providers', requireCustomerAuth, (req, res) => {
   res.json({
     status: 'ok',
     providers: PROVIDERS.map((provider) => ({

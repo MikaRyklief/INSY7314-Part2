@@ -9,6 +9,7 @@ import { config } from './config.js';
 import authRouter from './routes/auth.js';
 import paymentsRouter from './routes/payments.js';
 import securityRouter from './routes/security.js';
+import staffRouter from './routes/staff.js';
 import { csrfProtection, handleCsrfErrors } from './middleware/csrf.js';
 
 export const createApp = () => {
@@ -62,6 +63,7 @@ export const createApp = () => {
   app.use('/api/security', securityRouter);
   app.use('/api/auth', csrfProtection, authRouter);
   app.use('/api/payments', csrfProtection, paymentsRouter);
+  app.use('/api/staff', csrfProtection, staffRouter);
 
   app.use((req, res) => {
     res.status(404).json({ status: 'error', message: 'Route not found.' });

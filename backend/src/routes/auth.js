@@ -5,7 +5,7 @@ import { createCustomer, findCustomerByCredentials, findCustomerById } from '../
 import { config } from '../config.js';
 import { validateBody } from '../middleware/validate.js';
 import { validateLoginPayload, validateRegistrationPayload } from '../utils/validators.js';
-import { requireAuth } from '../middleware/auth.js';
+import { requireCustomerAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -34,18 +34,16 @@ router.post(
         passwordHash
       });
 
-      const token = jwt.sign(
-        {
-          sub: result.id,
-          fullName,
-          accountNumber
-        },
-        config.jwtSecret,
-        {
-          expiresIn: '8h',
-          issuer: 'secure-payments'
-        }
-      );
+      const tokenPayload = {
+        sub: result.id,
+        fullName,
+        accountNumber,
+        role: 'customer'
+      };
+      const token = jwt.sign(tokenPayload, config.jwtSecret, {
+        expiresIn: '8h',
+        issuer: 'secure-payments'
+      });
 
       res.cookie('session', token, ISSUE_COOKIE_OPTIONS);
       res.status(201).json({
@@ -54,7 +52,8 @@ router.post(
         user: {
           id: result.id,
           fullName,
-          accountNumber
+          accountNumber,
+          role: 'customer'
         }
       });
     } catch (err) {
@@ -94,18 +93,16 @@ router.post(
         return;
       }
 
-      const token = jwt.sign(
-        {
-          sub: customer.id,
-          fullName: customer.fullName,
-          accountNumber: customer.accountNumber
-        },
-        config.jwtSecret,
-        {
-          expiresIn: '8h',
-          issuer: 'secure-payments'
-        }
-      );
+      const tokenPayload = {
+        sub: customer.id,
+        fullName: customer.fullName,
+        accountNumber: customer.accountNumber,
+        role: 'customer'
+      };
+      const token = jwt.sign(tokenPayload, config.jwtSecret, {
+        expiresIn: '8h',
+        issuer: 'secure-payments'
+      });
 
       res.cookie('session', token, ISSUE_COOKIE_OPTIONS);
       res.json({
@@ -113,7 +110,8 @@ router.post(
         user: {
           id: customer.id,
           fullName: customer.fullName,
-          accountNumber: customer.accountNumber
+          accountNumber: customer.accountNumber,
+          role: 'customer'
         }
       });
     } catch (err) {
@@ -131,14 +129,14 @@ router.post('/logout', (req, res) => {
   res.json({ status: 'ok', message: 'Logged out.' });
 });
 
-router.get('/me', requireAuth, async (req, res) => {
+router.get('/me', requireCustomerAuth, async (req, res) => {
   try {
     const customer = await findCustomerById(req.user.id);
     if (!customer) {
       res.status(404).json({ status: 'error', message: 'Customer not found.' });
       return;
     }
-    res.json({ status: 'ok', user: customer });
+    res.json({ status: 'ok', user: { ...customer, role: 'customer' } });
   } catch (err) {
     res.status(500).json({ status: 'error', message: 'Unable to fetch profile.' });
   }
