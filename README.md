@@ -75,7 +75,7 @@ GitHub Actions workflow `secure-ci` executes on every push/PR:
 
 Extend the pipeline with additional SAST/DAST tooling (e.g., CodeQL, OWASP ZAP) as deployment policies require.
 
-## Runtime Hardening Tips
+## Runtime Hardening Future Production Tips
 
 - Host the API behind a Web Application Firewall (WAF) with mutual TLS for internal operator portals.
 - Store secrets in a managed vault (Azure Key Vault, AWS Secrets Manager) instead of `.env` for production.
