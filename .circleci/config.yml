@@ -86,6 +86,7 @@ jobs:
               echo "Unable to install Node.js and npm: unsupported package manager" >&2
               exit 1
             fi
+
       - run:
           name: Install dependencies for analysis context
           command: |
@@ -93,26 +94,34 @@ jobs:
             npm ci
             cd ../frontend
             npm ci
+
       - run:
           name: Run SonarQube analysis
           command: |
             project_key="${SONAR_PROJECT_KEY:-$(grep -E '^sonar\.projectKey=' sonar-project.properties | cut -d'=' -f2)}"
             host_url="${SONAR_HOST_URL:-https://sonarcloud.io}"
+            organization="${SONAR_ORGANIZATION:-$(grep -E '^sonar\.organization=' sonar-project.properties | cut -d'=' -f2)}"
 
             if [ -z "${SONAR_TOKEN}" ]; then
-              echo "SONAR_TOKEN is required for authentication. Configure it in CircleCI or supply it when running locally." >&2
-              exit 1
-            fi
-            
-            if [ -z "${project_key}" ]; then
-              echo "Unable to determine sonar.projectKey. Set SONAR_PROJECT_KEY or define it in sonar-project.properties." >&2
+              echo "❌ SONAR_TOKEN is required for authentication. Configure it in CircleCI or supply it when running locally." >&2
               exit 1
             fi
 
-            echo "Running SonarQube scan with project key '${project_key}' against '${host_url}'."
+            if [ -z "${project_key}" ]; then
+              echo "❌ Unable to determine sonar.projectKey. Set SONAR_PROJECT_KEY or define it in sonar-project.properties." >&2
+              exit 1
+            fi
+
+            if [ -z "${organization}" ]; then
+              echo "❌ Unable to determine sonar.organization. Set SONAR_ORGANIZATION or define it in sonar-project.properties." >&2
+              exit 1
+            fi
+
+            echo "🚀 Running SonarQube scan for '${project_key}' in organization '${organization}' against '${host_url}'."
 
             sonar-scanner \
               -Dsonar.projectKey="${project_key}" \
+              -Dsonar.organization="${organization}" \
               -Dsonar.host.url="${host_url}" \
               -Dsonar.login="${SONAR_TOKEN}"
 
