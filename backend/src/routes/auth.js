@@ -42,7 +42,7 @@ router.post(
         return;
       }
 
-         const passwordMatches = await verifyPassword(password, customer.passwordHash);
+      const passwordMatches = await verifyPassword(password, customer.passwordHash);
       if (!passwordMatches) {
         res.status(401).json({ status: 'error', message: 'Invalid credentials.' });
         return;

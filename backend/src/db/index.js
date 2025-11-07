@@ -199,32 +199,6 @@ export const initializeDatabase = async () => {
   return database;
 };
 
-// Commented out to disable self-service registration.
-
-/*export const createCustomer = async ({ fullName, idNumber, accountNumber, passwordHash }) => {
-  const customers = getCollection('customers');
-  const now = new Date();
-
-  try {
-    const result = await customers.insertOne({
-      fullName,
-      idNumber,
-      accountNumber,
-      passwordHash,
-      createdAt: now
-    });
-
-    return { id: result.insertedId.toString() };
-  } catch (err) {
-    if (err?.code === 11000) {
-      const error = new Error('Customer already exists.');
-      error.code = 'DUPLICATE_CUSTOMER';
-      throw error;
-    }
-    throw err;
-  }
-}; */
-
 export const findCustomerByCredentials = async ({ idNumber, accountNumber }) => {
   const customers = getCollection('customers');
   const doc = await customers.findOne(

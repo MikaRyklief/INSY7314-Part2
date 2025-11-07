@@ -7,7 +7,6 @@ import { useAuth } from './context/AuthContext.jsx';
 import { useEmployeeAuth } from './context/EmployeeAuthContext.jsx';
 
 const App = () => {
-
   const { user, loading: customerLoading, loginCustomer, logoutCustomer } = useAuth();
   const {
     employee,
