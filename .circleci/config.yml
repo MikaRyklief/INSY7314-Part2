@@ -55,6 +55,7 @@ jobs:
   sonar_scan:
     docker:
       - image: sonarsource/sonar-scanner-cli:10
+      - user: root
     working_directory: /usr/src
     steps:
       - checkout
