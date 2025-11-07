@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-//import RegistrationForm from './components/RegistrationForm.jsx';
 import LoginForm from './components/LoginForm.jsx';
 import Dashboard from './components/Dashboard.jsx';
 import EmployeeLoginForm from './components/EmployeeLoginForm.jsx';
@@ -8,13 +7,7 @@ import { useAuth } from './context/AuthContext.jsx';
 import { useEmployeeAuth } from './context/EmployeeAuthContext.jsx';
 
 const App = () => {
-  /*const {
-    user,
-    loading: customerLoading,
-    registerCustomer,
-    loginCustomer,
-    logoutCustomer
-  } = useAuth(); */
+
   const { user, loading: customerLoading, loginCustomer, logoutCustomer } = useAuth();
   const {
     employee,
@@ -44,9 +37,6 @@ const App = () => {
         return <Dashboard user={user} onLogout={logoutCustomer} />;
       }
 
-      /* return customerMode === 'register'
-        ? <RegistrationForm onRegister={registerCustomer} />
-        : <LoginForm onLogin={loginCustomer} />; */
       return (
         <>
           <LoginForm onLogin={loginCustomer} />

@@ -6,7 +6,7 @@ This project delivers a secure international payments experience for both custom
 
 - **Customer portal** - Pre-provisioned logins capture international payments and track statuses (pending, verified, rejected).
 - **Employee workspace** - Dedicated staff login, payment queue with filters, verification/rejection actions, and SWIFT submission summary.
-- **Security-first foundation** - Bcrypt password hashing, strict input whitelisting, CSRF protection, secure cookies, and opinionated security headers.
+- **Security-first foundation** - Scrypt password hashing with per-user salts, strict input whitelisting, CSRF protection, secure cookies, and opinionated security headers.
 - **Automated governance** - CircleCI workflow (`.circleci/config.yml`) that enforces linting, builds, and security scans on every push.
 
 ## Architecture Overview
@@ -18,7 +18,7 @@ This project delivers a secure international payments experience for both custom
 
 ## Security Controls
 
-- **Password safety** - All customer and employee passwords are hashed with bcrypt (12 rounds) before storage.
+- **Password safety** - All customer and employee passwords are hashed with Node's `crypto.scrypt` using strong parameters and random salts before storage.
 - **Input whitelisting** - Client and server share strict RegEx validators for names, South African ID numbers, account numbers, currencies, providers, beneficiary accounts, and SWIFT codes.
 - **SSL/TLS enforcement** - The API only listens via HTTPS and the frontend dev server is configured to target the same secure origin.
 - **Defence in depth**
@@ -31,7 +31,7 @@ This project delivers a secure international payments experience for both custom
 
 ### Threat coverage
 
-- **Session jacking** – JWTs are issued in HTTP-only, `SameSite=strict` cookies with bcrypt-hashed credentials and short lifetimes.
+- **Session jacking** – JWTs are issued in HTTP-only, `SameSite=strict` cookies backed by scrypt-hashed credentials and short lifetimes.
 - **Clickjacking** – Helmet’s CSP denies all frames (`frame-ancestors 'none'`) and the app hides the `X-Powered-By` hint.
 - **Injection attacks** – Validators sanitize inputs, Mongo queries whitelist fields, and unique indexes plus ObjectId casting block crafted payloads.
 - **Cross-site scripting** – Strict CSP, `xss-clean`, payload validation, and template escaping prevent script injection.

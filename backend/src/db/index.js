@@ -1,5 +1,6 @@
 import { MongoClient, ObjectId, ServerApiVersion } from 'mongodb';
 import { config } from '../config.js';
+import { hashPasswordSync } from '../utils/passwords.js';
 
 let client;
 let database;
@@ -9,13 +10,13 @@ const DEFAULT_CUSTOMERS = [
     fullName: 'Nomsa Dlamini',
     idNumber: '8501011234088',
     accountNumber: '110000123456',
-    passwordHash: '$2b$12$1.dKoaRI4ln2SiqeBZiIEutN3U2lRvEaFGdDdEvUEoS0kO.WZNi.y'
+    passwordHash: hashPasswordSync('Customer!2024')
   },
   {
     fullName: 'Daniel Naidoo',
     idNumber: '9005057654085',
     accountNumber: '210098765432',
-    passwordHash: '$2b$12$AbqsobLxDtyFh7G87cZbGuMRqsK5EBi/QVmQU3lyRTpY1tiAvMxEe'
+    passwordHash: hashPasswordSync('GlobalPay!2024')
   }
 ];
 
@@ -23,7 +24,7 @@ const DEFAULT_EMPLOYEES = [
   {
     fullName: 'International Operations Officer',
     employeeId: 'OPS001',
-    passwordHash: '$2b$12$8Zb8zu9ERXpufwYHgHN/aOygBgMUSCB1dKqKKFljf8kd/gc.0IaAS'
+    passwordHash: hashPasswordSync('OpsPortal!2024')
   }
 ];
 

@@ -1,4 +1,3 @@
-import bcrypt from 'bcrypt';
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import {
@@ -16,6 +15,7 @@ import {
   validateEmployeeLoginPayload,
   validatePaymentReviewPayload
 } from '../utils/validators.js';
+import { verifyPassword } from '../utils/passwords.js';
 
 const router = express.Router();
 
@@ -41,7 +41,7 @@ router.post(
         return;
       }
 
-      const passwordMatches = await bcrypt.compare(password, employee.passwordHash);
+      const passwordMatches = await verifyPassword(password, employee.passwordHash);
       if (!passwordMatches) {
         res.status(401).json({ status: 'error', message: 'Invalid credentials.' });
         return;
