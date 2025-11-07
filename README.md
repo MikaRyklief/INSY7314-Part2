@@ -166,4 +166,4 @@ print the installed version immediately after the download finishes.
 
 ## YouTube Link
 
-- https://youtu.be/LcZwnxqDG4c?si=pu4kwPPyZ_n18nWX
+- https://youtu.be/rIq3yn-3cZI
