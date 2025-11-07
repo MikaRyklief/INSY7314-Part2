@@ -1,4 +1,4 @@
-const NAME_REGEX = /^[A-Za-z ,.'-]{2,60}$/;
+//const NAME_REGEX = /^[A-Za-z ,.'-]{2,60}$/;
 const SOUTH_AFRICAN_ID_REGEX = /^\d{13}$/;
 const ACCOUNT_REGEX = /^\d{10,20}$/;
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{12,}$/;
@@ -11,6 +11,7 @@ const SWIFT_REGEX = /^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$/;
 export const PROVIDERS = ['SWIFT', 'SEPA', 'FEDWIRE'];
 export const PAYMENT_REVIEW_DECISIONS = ['verified', 'rejected'];
 
+/*
 export const validateRegistrationPayload = (payload) => {
   const errors = [];
   if (!NAME_REGEX.test(payload.fullName || '')) {
@@ -27,6 +28,7 @@ export const validateRegistrationPayload = (payload) => {
   }
   return errors;
 };
+*/
 
 export const validateLoginPayload = (payload) => {
   const errors = [];

@@ -130,6 +130,12 @@ button:disabled {
   color: #047857;
 }
 
+.info-card {
+  background: #f8fafc;
+  border: 1px solid #cbd5f5;
+  color: #1e293b;
+}
+
 .toolbar {
   display: flex;
   justify-content: space-between;

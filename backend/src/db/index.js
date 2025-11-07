@@ -4,6 +4,21 @@ import { config } from '../config.js';
 let client;
 let database;
 
+const DEFAULT_CUSTOMERS = [
+  {
+    fullName: 'Nomsa Dlamini',
+    idNumber: '8501011234088',
+    accountNumber: '110000123456',
+    passwordHash: '$2b$12$1.dKoaRI4ln2SiqeBZiIEutN3U2lRvEaFGdDdEvUEoS0kO.WZNi.y'
+  },
+  {
+    fullName: 'Daniel Naidoo',
+    idNumber: '9005057654085',
+    accountNumber: '210098765432',
+    passwordHash: '$2b$12$AbqsobLxDtyFh7G87cZbGuMRqsK5EBi/QVmQU3lyRTpY1tiAvMxEe'
+  }
+];
+
 const DEFAULT_EMPLOYEES = [
   {
     fullName: 'International Operations Officer',
@@ -86,6 +101,33 @@ const mapPaymentWithCustomer = (paymentDoc, customerDoc) => {
   };
 };
 
+const seedCustomers = async (customersCollection) => {
+  if (!DEFAULT_CUSTOMERS.length) {
+    return;
+  }
+
+  const operations = DEFAULT_CUSTOMERS.map((customer) => ({
+    updateOne: {
+      filter: {
+        idNumber: customer.idNumber,
+        accountNumber: customer.accountNumber
+      },
+      update: {
+        $setOnInsert: {
+          fullName: customer.fullName,
+          idNumber: customer.idNumber,
+          accountNumber: customer.accountNumber,
+          passwordHash: customer.passwordHash,
+          createdAt: new Date()
+        }
+      },
+      upsert: true
+    }
+  }));
+
+  await customersCollection.bulkWrite(operations, { ordered: false });
+};
+
 const seedEmployees = async (employeesCollection) => {
   if (!DEFAULT_EMPLOYEES.length) {
     return;
@@ -125,6 +167,7 @@ const ensureIndexesAndSeed = async () => {
     employees.createIndex({ searchEmployeeId: 1 }, { unique: true, name: 'unique_employee_id_lookup' })
   ]);
 
+  await seedCustomers(customers);
   await seedEmployees(employees);
 };
 
@@ -155,7 +198,9 @@ export const initializeDatabase = async () => {
   return database;
 };
 
-export const createCustomer = async ({ fullName, idNumber, accountNumber, passwordHash }) => {
+// Commented out to disable self-service registration.
+
+/*export const createCustomer = async ({ fullName, idNumber, accountNumber, passwordHash }) => {
   const customers = getCollection('customers');
   const now = new Date();
 
@@ -177,7 +222,7 @@ export const createCustomer = async ({ fullName, idNumber, accountNumber, passwo
     }
     throw err;
   }
-};
+}; */
 
 export const findCustomerByCredentials = async ({ idNumber, accountNumber }) => {
   const customers = getCollection('customers');

@@ -4,7 +4,7 @@ This project delivers a secure international payments experience for both custom
 
 ## Key Features
 
-- **Customer portal** - Registration, login, and payment capture with status tracking (pending, verified, rejected).
+- **Customer portal** - Pre-provisioned logins capture international payments and track statuses (pending, verified, rejected).
 - **Employee workspace** - Dedicated staff login, payment queue with filters, verification/rejection actions, and SWIFT submission summary.
 - **Security-first foundation** - Bcrypt password hashing, strict input whitelisting, CSRF protection, secure cookies, and opinionated security headers.
 - **Automated governance** - CircleCI workflow (`.circleci/config.yml`) that enforces linting, builds, and security scans on every push.
@@ -81,17 +81,19 @@ This project delivers a secure international payments experience for both custom
    Open `https://localhost:5173` in the browser and accept the self-signed certificate if prompted.
 
 5. **Default access**
-   - Customers register with their South African ID number (used as the username), account number, and strong password.
-   - A seed employee account is created automatically:
-     - Employee ID: `OPS001`
-     - Password: `OpsPortal!2024`
+   - Customer access is provisioned centrally — self-service registration is disabled by design.
+   - Seed credentials for secure testing:
+      - Customer 1: `Nomsa Dlamini` — ID `8501011234088`, Account `110000123456`, Password `Customer!2024`
+      - Customer 2: `Daniel Naidoo` — ID `9005057654085`, Account `210098765432`, Password `GlobalPay!2024`
+      - Employee: `OPS001` / `OpsPortal!2024`
 
 ## CI/CD & Automation (CircleCI)
 
 The CircleCI pipeline (`.circleci/config.yml`) runs on every push:
 
-1. Installs backend dependencies with `npm ci`, lints the API, and executes `npm run security-scan` (`npm audit --audit-level=high`).
+1. Installs backend dependencies with `npm ci`, lints the API, runs automated API smoke tests, and executes `npm run security-scan` (`npm audit --audit-level=high`).
 2. Installs frontend dependencies, runs ESLint, and builds the React application.
+3. Executes a SonarQube scan (`sonar-scanner`) to surface hotspots and code smells (configure `SONAR_TOKEN`, `SONAR_HOST_URL`, and `SONAR_PROJECT_KEY` in CircleCI project settings).
 
 ### First-time setup
 
@@ -106,6 +108,7 @@ The CircleCI pipeline (`.circleci/config.yml`) runs on every push:
 cd backend
 npm install
 npm run lint
+npm run test:api
 npm run security-scan
 
 # Frontend
@@ -121,9 +124,13 @@ npm run build
 - Staff actions update the shared database so customer status badges reflect `Verified` or `Rejected` in real time.
 - Staff use the "Submit to SWIFT" control to record that verified payments have been forwarded downstream (integration stubbed for now, Future updates).
 
-## Runtime Hardening 
+## Future Runtime Hardening 
 
 - Protect the API behind a WAF or API gateway with additional DDoS safeguards.
 - Store secrets in a vault service (Azure Key Vault, AWS Secrets Manager, HashiCorp Vault) instead of `.env` files.
 - Enable MongoDB encryption at rest, restrict network ingress to trusted CIDRs, and schedule secure point-in-time backups of the cluster.
 - Monitor logs for repeated authentication failures and integrate alerts with your SIEM.
+
+## YouTube Link
+
+- https://youtu.be/LcZwnxqDG4c?si=pu4kwPPyZ_n18nWX

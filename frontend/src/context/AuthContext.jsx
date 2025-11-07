@@ -1,16 +1,19 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import apiClient, { fetchCsrfToken } from '../api/client.js';
-import { validateLoginPayload, validateRegistrationPayload } from '../utils/validators.js';
+//import { validateLoginPayload, validateRegistrationPayload } from '../utils/validators.js';
+import { validateLoginPayload } from '../utils/validators.js';
 
 const AuthContext = createContext(undefined);
 
+/* 
 const sanitizeRegistrationPayload = (payload) => ({
   fullName: payload.fullName.trim(),
   idNumber: payload.idNumber.trim(),
   accountNumber: payload.accountNumber.trim(),
   password: payload.password
 });
+*/
 
 const sanitizeLoginPayload = (payload) => ({
   username: payload.username.trim(),
@@ -40,6 +43,7 @@ export const AuthProvider = ({ children }) => {
     loadSession();
   }, [loadSession]);
 
+  /*
   const registerCustomer = useCallback(async (payload) => {
     const errors = validateRegistrationPayload(payload);
     if (errors.length > 0) {
@@ -56,6 +60,7 @@ export const AuthProvider = ({ children }) => {
       return { success: false, errors: serverErrors || [message] };
     }
   }, []);
+  */
 
   const loginCustomer = useCallback(async (payload) => {
     const errors = validateLoginPayload(payload);
@@ -88,7 +93,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     loading,
-    registerCustomer,
+    //registerCustomer,
     loginCustomer,
     logoutCustomer,
     refreshSession: loadSession

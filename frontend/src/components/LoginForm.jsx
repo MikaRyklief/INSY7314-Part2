@@ -42,7 +42,7 @@ const LoginForm = ({ onLogin }) => {
     <form onSubmit={handleSubmit} className="card">
       <h2>Customer Login</h2>
       <p className="helper-text">
-        Use the 13 digit ID number you registered with as the username.
+        Use the 13 digit ID number and account number issued to you during onboarding.
       </p>
 
       <label htmlFor="username">Username (ID Number)</label>

@@ -1,10 +1,12 @@
 import bcrypt from 'bcrypt';
 import express from 'express';
 import jwt from 'jsonwebtoken';
-import { createCustomer, findCustomerByCredentials, findCustomerById } from '../db/index.js';
+//import { createCustomer, findCustomerByCredentials, findCustomerById } from '../db/index.js';
+import { findCustomerByCredentials, findCustomerById } from '../db/index.js';
 import { config } from '../config.js';
 import { validateBody } from '../middleware/validate.js';
-import { validateLoginPayload, validateRegistrationPayload } from '../utils/validators.js';
+//import { validateLoginPayload, validateRegistrationPayload } from '../utils/validators.js';
+import { validateLoginPayload } from '../utils/validators.js';
 import { requireCustomerAuth } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -17,6 +19,7 @@ const ISSUE_COOKIE_OPTIONS = {
   maxAge: 1000 * 60 * 60 * 8 // 8 hours
 };
 
+/*
 router.post(
   '/register',
   validateBody(validateRegistrationPayload),
@@ -68,7 +71,14 @@ router.post(
       res.status(500).json({ status: 'error', message: 'Unable to complete registration.' });
     }
   }
-);
+); 
+*/
+router.post('/register', (req, res) => {
+  res.status(403).json({
+    status: 'error',
+    message: 'Self-service registration is disabled. Contact support to provision access.'
+  });
+});
 
 router.post(
   '/login',

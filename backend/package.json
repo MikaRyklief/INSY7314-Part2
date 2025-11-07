@@ -8,6 +8,7 @@
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "lint": "eslint .",
+    "test:api": "JWT_SECRET=testing-secret NODE_ENV=test node --test",
     "security-scan": "npm audit --audit-level=high || true"
   },
   "engines": {
