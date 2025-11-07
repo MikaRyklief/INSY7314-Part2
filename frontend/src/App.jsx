@@ -24,8 +24,6 @@ const App = () => {
   } = useEmployeeAuth();
 
   const [portal, setPortal] = useState('customer');
-  //const [customerMode, setCustomerMode] = useState('login');
-
   const portalDescription = useMemo(() => (
     portal === 'customer'
       ? 'Pre-enrolled customers can capture and track secure international payments.'
