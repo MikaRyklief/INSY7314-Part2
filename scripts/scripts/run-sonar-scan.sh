@@ -37,7 +37,7 @@ export SONAR_HOST_URL
 export SONAR_PROJECT_KEY
 export SONAR_ORGANIZATION
 
-DOCKER_IMAGE="sonarsource/sonar-scanner-cli:4.7.0.2747"
+DOCKER_IMAGE="sonarsource/sonar-scanner-cli:10
 
 docker run --rm \
   -e "SONAR_TOKEN=$SONAR_TOKEN" \
