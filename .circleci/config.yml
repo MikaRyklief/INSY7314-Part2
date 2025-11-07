@@ -76,12 +76,20 @@ jobs:
               exit 1
             fi
 
+            SONAR_ARGS="-Dsonar.login=${SONAR_TOKEN} -Dsonar.host.url=${SONAR_HOST_URL:-https://sonarcloud.io}"
+
+            if [ -n "${SONAR_PROJECT_KEY:-}" ]; then
+              SONAR_ARGS="$SONAR_ARGS -Dsonar.projectKey=${SONAR_PROJECT_KEY}"
+            fi
+
+            if [ -n "${SONAR_ORGANIZATION:-}" ]; then
+              SONAR_ARGS="$SONAR_ARGS -Dsonar.organization=${SONAR_ORGANIZATION}"
+            fi
+
             echo "🚀 Running SonarCloud analysis using Java 17"
-            sonar-scanner \
-              -Dsonar.projectKey="${SONAR_PROJECT_KEY}" \
-              -Dsonar.organization="${SONAR_ORGANIZATION}" \
-              -Dsonar.host.url="${SONAR_HOST_URL:-https://sonarcloud.io}" \
-              -Dsonar.login="${SONAR_TOKEN}"
+
+            sonar-scanner $SONAR_ARGS
+            
 
 workflows:
   build_and_secure:
